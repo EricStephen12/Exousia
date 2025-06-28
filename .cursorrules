@@ -1,0 +1,107 @@
+# Exousia Project Intelligence
+
+## Project Patterns
+
+### Design Patterns
+- **Visual Language**: Dramatic, high-contrast designs with scripture overlays
+- **Color Palette**: Matte Black, Cream Beige, Warm Gold as primary colors
+- **Typography Hierarchy**:
+  - Headlines: Noe Display, Didot, Playfair Display
+  - Body: Neue Haas Grotesk, Satoshi, Manrope
+  - Verse overlays: Italiana, Parisienne, Dancing Script
+- **Animation Style**: Smooth, dramatic animations with parallax effects and scripture reveals
+
+### Code Organization
+- **Next.js App Router**: Using the new App Router structure with nested layouts
+- **Component Structure**: Atomic design approach with atoms, molecules, organisms
+- **State Management**: Zustand for global state, React Context for theme/auth
+- **API Structure**: Route handlers in app/api directory
+
+### Naming Conventions
+- **Components**: PascalCase (e.g., ProductCard, HeroSection)
+- **Utility Functions**: camelCase (e.g., formatPrice, getProductById)
+- **API Routes**: kebab-case (e.g., /api/products/get-by-id)
+- **Database Tables**: snake_case (e.g., product_items, order_details)
+
+### File Structure
+```
+app/
+├── (auth)/
+│   ├── sign-in/
+│   └── sign-up/
+├── (shop)/
+│   ├── products/
+│   │   └── [productId]/
+│   ├── collections/
+│   │   └── [collectionId]/
+│   └── checkout/
+├── admin/
+│   ├── products/
+│   ├── orders/
+│   └── customers/
+├── api/
+│   ├── products/
+│   ├── orders/
+│   └── checkout/
+├── components/
+│   ├── ui/
+│   ├── product/
+│   ├── cart/
+│   ├── checkout/
+│   └── layout/
+└── lib/
+    ├── utils/
+    ├── hooks/
+    ├── animations/
+    └── supabase/
+```
+
+### Database Schema
+- **products**: Product information including name, price, description
+- **collections**: Product categories and collections
+- **scriptures**: Bible verses associated with products
+- **orders**: Customer order information
+- **order_items**: Individual items in each order
+- **users**: User account information
+- **profiles**: Extended user profile data
+
+## Project Preferences
+
+### Development Approach
+- **Component-First**: Build and test individual components before integrating
+- **Mobile-First**: Design for mobile first, then enhance for larger screens
+- **Performance Focus**: Prioritize performance in all development decisions
+- **Accessibility**: Ensure all components are accessible and follow WCAG guidelines
+
+### Animation Guidelines
+- **Purpose-Driven**: Animations should enhance the user experience, not distract
+- **Performance-Aware**: Use hardware-accelerated properties and optimize for 60fps
+- **Reduced Motion**: Support users who prefer reduced motion
+- **Meaningful Transitions**: Use animations to convey meaning and guide users
+
+### Code Quality Standards
+- **TypeScript**: Use strong typing for all components and functions
+- **ESLint/Prettier**: Follow configured linting and formatting rules
+- **Component Documentation**: Document props and usage for all components
+- **Unit Testing**: Write tests for critical functionality
+
+## Known Challenges
+
+### Technical Challenges
+- **Animation Performance**: Balancing rich animations with performance
+- **Image Optimization**: Managing high-quality product images while maintaining performance
+- **Mobile Experience**: Translating dramatic desktop effects to mobile devices
+- **Font Loading**: Managing custom fonts for optimal loading and display
+
+### UX Challenges
+- **Balance**: Finding the right balance between visual drama and usability
+- **Information Hierarchy**: Maintaining clear information hierarchy despite rich visuals
+- **Loading Experience**: Creating engaging loading states for content-heavy pages
+- **Accessibility**: Ensuring accessibility despite complex visual design
+
+## Learning Resources
+- [Next.js App Router Documentation](https://nextjs.org/docs/app)
+- [Supabase Documentation](https://supabase.com/docs)
+- [Framer Motion Examples](https://www.framer.com/motion/examples)
+- [Shadcn/UI Components](https://ui.shadcn.com/docs)
+- [Stripe Payment Integration](https://stripe.com/docs/payments) 
