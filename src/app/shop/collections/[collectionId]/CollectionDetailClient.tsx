@@ -30,7 +30,7 @@ export default function CollectionDetailClient({ collectionId }: { collectionId:
         
         // Fetch all collections
         const collectionsData = await getCollectionsClient();
-        const foundCollection = collectionsData.find(c => c.id === collectionId);
+        const foundCollection = collectionsData.find((c: { id: string }) => c.id === collectionId);
         
         if (!foundCollection) {
           setError("Collection not found");

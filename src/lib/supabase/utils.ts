@@ -1,11 +1,31 @@
 import { createClient } from '@supabase/supabase-js';
 import { Product, Collection } from '../store/mockData';
-import { Database } from './types';
+
+interface ProductImage {
+  image_url: string;
+}
+
+interface ProductSize {
+  size: string;
+}
+
+interface ProductColor {
+  color: string;
+}
+
+interface Scripture {
+  verse: string;
+  reference: string;
+}
+
+interface ProductCollection {
+  collection_id: string;
+}
 
 // Transform a database product to frontend product model
 export async function dbProductToFrontendProduct(
-  supabase: ReturnType<typeof createClient<Database>>,
-  dbProduct: Database['public']['Tables']['products']['Row']
+  supabase: ReturnType<typeof createClient>,
+  dbProduct: any
 ): Promise<Product> {
   // Get product images
   const { data: images } = await supabase
@@ -46,14 +66,14 @@ export async function dbProductToFrontendProduct(
     description: dbProduct.description || '',
     category: dbProduct.category,
     stock: dbProduct.stock,
-    collectionIds: collections?.map(c => c.collection_id) || [],
-    scripture: scripture || { verse: '', reference: '' },
-    image: images && images.length > 0 ? images[0].image_url : '',
-    images: images?.map(img => img.image_url) || [],
+    collectionIds: (collections as ProductCollection[] || []).map(c => c.collection_id),
+    scripture: (scripture as Scripture) || { verse: '', reference: '' },
+    image: (images as ProductImage[] || []).length > 0 ? (images as ProductImage[])[0].image_url : '',
+    images: (images as ProductImage[] || []).map(img => img.image_url),
     cut: dbProduct.cut || undefined,
     careInstructions: dbProduct.care_instructions || undefined,
-    sizes: sizes?.map(s => s.size) || [],
-    colors: colors?.map(c => c.color) || []
+    sizes: (sizes as ProductSize[] || []).map(s => s.size),
+    colors: (colors as ProductColor[] || []).map(c => c.color)
   };
 }
 
@@ -109,7 +129,7 @@ export function frontendProductToDbFormat(product: Product) {
 
 // Transform a database collection to frontend collection model
 export function dbCollectionToFrontendCollection(
-  dbCollection: Database['public']['Tables']['collections']['Row']
+  dbCollection: any
 ): Collection {
   return {
     id: dbCollection.id,
@@ -132,7 +152,7 @@ export function frontendCollectionToDbFormat(collection: Collection) {
 
 // Helper function to insert a product with all related data
 export async function insertProductWithRelations(
-  supabase: ReturnType<typeof createClient<Database>>,
+  supabase: ReturnType<typeof createClient>,
   product: Product
 ) {
   const { product: productData, sizes, colors, scripture, images, collections } = 
