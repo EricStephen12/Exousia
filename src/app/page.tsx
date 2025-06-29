@@ -3,13 +3,15 @@ import Link from "next/link";
 import ClientLayout from "@/components/layout/ClientLayout";
 import { Product } from "@/lib/store/mockData";
 import ProductCard from "@/components/product/ProductCard";
+import { config } from "@/lib/config";
 
 async function getFeaturedProducts() {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    console.log('Base URL for API calls:', baseUrl);
+    // Use the config module for the API URL
+    const url = `${config.app.url}/api/products/featured`;
+    console.log('Fetching featured products from:', url);
     
-    const response = await fetch(`${baseUrl}/api/products/featured`, {
+    const response = await fetch(url, {
       cache: 'no-store' // Don't cache the response
     });
     
