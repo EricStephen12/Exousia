@@ -6,7 +6,7 @@ export async function GET() {
     const products = await getProductsServer();
     return NextResponse.json(products);
   } catch (error) {
-    console.error('Error in products route:', error);
+    console.error('Error in products API:', error);
     return NextResponse.json(
       { error: 'Failed to fetch products' },
       { status: 500 }

@@ -1,8 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import ClientLayout from "@/components/layout/ClientLayout";
+import { getProductsServer } from "@/lib/supabase/products";
 
-export default function Home() {
+export default async function Home() {
+  // Fetch products for featured section
+  const allProducts = await getProductsServer();
+  const featuredProducts = allProducts.slice(0, 3); // Get first three products
+
   return (
     <ClientLayout>
       <main className="min-h-screen flex flex-col">
@@ -74,34 +79,46 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Featured Products Section - Placeholder */}
+        {/* Featured Products Section */}
         <section className="py-24 bg-black">
           <div className="container">
             <h2 className="text-4xl md:text-5xl font-clash-display text-cream mb-12">FEATURED PIECES</h2>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {/* Product Cards would go here */}
-              {[1, 2, 3].map((item) => (
-                <div key={item} className="bg-black border border-gold/20 group cursor-pointer">
+              {featuredProducts.map((product) => (
+                <Link 
+                  key={product.id} 
+                  href={`/shop/products/${product.id}`}
+                  className="bg-black border border-gold/20 group cursor-pointer"
+                >
                   <div className="aspect-[3/4] relative overflow-hidden">
-                    <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                      <p className="text-gold font-italiana">Product Image {item}</p>
-                    </div>
+                    {product.image ? (
+                      <Image
+                        src={product.image}
+                        alt={product.name}
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                        <p className="text-gold font-italiana">{product.name}</p>
+                      </div>
+                    )}
                     
                     {/* Scripture overlay on hover */}
                     <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-500">
                       <p className="text-gold font-italiana text-center px-4">
-                        "Be strong and courageous"
+                        {product.scripture.verse}
                       </p>
                     </div>
                   </div>
                   
                   <div className="p-4">
-                    <h3 className="font-satoshi font-semibold text-cream">Armor of God Tee</h3>
-                    <p className="text-sm text-cream/70">Ephesians 6:11</p>
-                    <p className="text-gold font-semibold mt-2">$45</p>
+                    <h3 className="font-satoshi font-semibold text-cream">{product.name}</h3>
+                    <p className="text-sm text-cream/70">{product.scripture.reference}</p>
+                    <p className="text-gold font-semibold mt-2">${product.price}</p>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
             

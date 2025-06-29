@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import ProductCard from "@/components/product/ProductCard";
 import FilterSidebar from "@/components/product/FilterSidebar";
 import SortOptions from "@/components/product/SortOptions";
-import { getProductsServer } from "@/lib/supabase/products";
 import { Product } from "@/lib/store/mockData";
 
 export default function ProductsClient() {
@@ -19,13 +18,16 @@ export default function ProductsClient() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Fetch products from Supabase using server-side function to bypass RLS
+  // Fetch products from API
   useEffect(() => {
     async function fetchProducts() {
       try {
         setIsLoading(true);
-        const data = await getProductsServer();
-        console.log("Fetched products:", data);
+        const response = await fetch('/api/products');
+        if (!response.ok) {
+          throw new Error('Failed to fetch products');
+        }
+        const data = await response.json();
         setProducts(data);
         setError(null);
       } catch (err) {
@@ -89,6 +91,18 @@ export default function ProductsClient() {
     }
   });
 
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="py-16 bg-black min-h-[50vh]">
+        <div className="container mx-auto px-4 text-center">
+          <div className="w-16 h-16 border-4 border-gold border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-cream mt-4">Loading products...</p>
+        </div>
+      </div>
+    );
+  }
+
   // Show error state
   if (error) {
     return (
@@ -114,7 +128,7 @@ export default function ProductsClient() {
         
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-center">
-            <h1 className="text-5xl md:text-6xl font-clash-display tracking-wider">ALL PRODUCTS</h1>
+            <h1 className="text-5xl md:text-6xl font-clash-display tracking-wider text-gold">ALL PRODUCTS</h1>
             <p className="text-cream italic font-satoshi mt-4">Wear your faith. Live your purpose.</p>
           </div>
         </div>
@@ -192,7 +206,7 @@ export default function ProductsClient() {
               </div>
               
               {/* Empty State */}
-              {sortedProducts.length === 0 && !isLoading && (
+              {sortedProducts.length === 0 && (
                 <div className="py-16 text-center">
                   <p className="text-gold text-xl mb-4">No products match your filters</p>
                   <button 
