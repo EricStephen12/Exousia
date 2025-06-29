@@ -96,25 +96,46 @@ export async function getProductsByCollectionClient(collectionId: string) {
 // Server-side functions (use these for admin operations)
 
 export async function getProductsServer() {
-  const supabaseServer = createServerSupabaseClient();
+  const supabase = createServerSupabaseClient();
   
-  const { data, error } = await supabaseServer
+  const { data: products, error } = await supabase
     .from('products')
     .select(`
       *,
-      product_images(*),
-      product_sizes(*),
-      product_colors(*),
-      scriptures(*),
-      product_collections(collection_id, collections(*))
+      scripture:scriptures(verse, reference),
+      sizes:product_sizes(size),
+      colors:product_colors(color),
+      collections:product_collections(
+        collection:collections(id, name)
+      )
     `);
-  
+
   if (error) {
     console.error('Error fetching products:', error);
-    return [];
+    throw error;
   }
-  
-  return transformProducts(data);
+
+  // Transform the data to match the expected format
+  const transformedProducts = products
+    .filter(product => !product.deleted && (product.active ?? true)) // Only include non-deleted and active products, default to true if active is null
+    .map(product => ({
+      id: product.id,
+      name: product.name,
+      description: product.description,
+      price: product.price,
+      category: product.category,
+      stock: product.stock,
+      cut: product.cut,
+      careInstructions: product.care_instructions,
+      image: product.image,
+      images: product.images || [],
+      scripture: product.scripture?.[0] || { verse: '', reference: '' },
+      sizes: product.sizes?.map((s: any) => s.size) || [],
+      colors: product.colors?.map((c: any) => c.color) || [],
+      collectionIds: product.collections?.map((c: any) => c.collection.id) || []
+    }));
+
+  return transformedProducts;
 }
 
 export async function getProductByIdServer(id: string) {
@@ -168,15 +189,36 @@ function transformProducts(data: any[]): Product[] {
 export function transformProduct(data: any): Product {
   if (!data) return {} as Product;
   
-  // Get the first image or empty string
-  const image = data.product_images && data.product_images.length > 0
+  // Use the main image field if available
+  const mainImage = data.image || '';
+  
+  // Get the first image from product_images or empty string
+  const firstProductImage = data.product_images && data.product_images.length > 0
     ? data.product_images[0].image_url
     : '';
   
-  // Get all images
-  const images = data.product_images
+  // Use the main image or the first product image
+  const image = mainImage || firstProductImage;
+  
+  // Get all images from the product_images table
+  const productImagesArray = data.product_images
     ? data.product_images.map((img: any) => img.image_url)
     : [];
+  
+  // Get all images from the images array field
+  const imagesArrayField = Array.isArray(data.images) ? data.images : [];
+  
+  // Combine all images, removing duplicates and ensuring the main image is first
+  let allImages = [...new Set([...productImagesArray, ...imagesArrayField])];
+  
+  // If we have a main image and it's not already the first image in the array,
+  // move it to the front
+  if (image && allImages.length > 0 && allImages[0] !== image) {
+    allImages = allImages.filter(img => img !== image);
+    allImages.unshift(image);
+  }
+  
+  console.log('Product image data:', { mainImage, image, images: allImages });
   
   // Get sizes
   const sizes = data.product_sizes
@@ -213,7 +255,7 @@ export function transformProduct(data: any): Product {
     collectionIds,
     scripture,
     image,
-    images,
+    images: allImages,
     sizes,
     colors
   };

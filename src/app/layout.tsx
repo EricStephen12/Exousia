@@ -16,7 +16,28 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider>
+    <ClerkProvider
+      appearance={{
+        baseTheme: undefined,
+        elements: {
+          formButtonPrimary: 'bg-gold hover:bg-gold/90 text-black',
+          footerActionLink: 'text-gold hover:text-gold/80',
+          card: 'bg-black border border-gold/30',
+          headerTitle: 'text-gold font-clash-display',
+          headerSubtitle: 'text-cream',
+          formFieldInput: 'bg-black/30 border border-gold/30 text-cream focus:border-gold focus:ring-gold',
+          formFieldLabel: 'text-cream',
+          socialButtonsBlockButton: 'border border-gold/30 text-cream hover:bg-gold/10',
+          socialButtonsBlockButtonText: 'text-cream',
+          dividerLine: 'bg-gold/30',
+          dividerText: 'text-cream',
+        },
+      }}
+      signInUrl="/sign-in"
+      signUpUrl="/sign-up"
+      afterSignInUrl="/"
+      afterSignUpUrl="/"
+    >
       <html lang="en" className={`${inter.variable} ${playfair.variable} ${clashDisplay.variable} ${satoshi.variable} ${italiana.variable}`} suppressHydrationWarning>
         <body className="bg-black text-cream font-satoshi antialiased" suppressHydrationWarning>
           <Header />

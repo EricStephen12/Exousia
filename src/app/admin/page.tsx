@@ -135,8 +135,37 @@ export default function AdminPage() {
   };
   
   const handleEditProduct = (product: Product) => {
-    setCurrentProduct(product);
-    setIsProductModalOpen(true);
+    // Check if the product ID is a simple number (from mock data) or a UUID (from database)
+    // If it's a simple number like "1", "2", etc., we need to fetch the real product from the database
+    const isSimpleId = /^\d+$/.test(product.id);
+    
+    if (isSimpleId) {
+      // For mock data products, we need to fetch the actual database product
+      fetch(`/api/products?name=${encodeURIComponent(product.name)}`)
+        .then(response => response.json())
+        .then(data => {
+          if (data && data.length > 0) {
+            // Find the matching product by name
+            const dbProduct = data.find((p: Product) => p.name === product.name);
+            if (dbProduct) {
+              setCurrentProduct(dbProduct);
+              setIsProductModalOpen(true);
+            } else {
+              alert('Could not find the product in the database');
+            }
+          } else {
+            alert('Could not find the product in the database');
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching product:', error);
+          alert('Error fetching product details');
+        });
+    } else {
+      // For database products with UUID, we can edit directly
+      setCurrentProduct(product);
+      setIsProductModalOpen(true);
+    }
   };
   
   const handleViewProduct = (product: Product) => {
@@ -149,23 +178,54 @@ export default function AdminPage() {
     setIsProductDetailsOpen(false);
   };
   
-  const handleSaveProduct = (productData: Omit<Product, "id">) => {
-    if (currentProduct) {
-      // Update existing product
-      setProducts(prevProducts => 
-        prevProducts.map(p => 
-          p.id === currentProduct.id 
-            ? { ...p, ...productData } 
-            : p
-        )
-      );
-    } else {
-      // Add new product
-      const newProduct: Product = {
-        id: `product-${Date.now()}`,
-        ...productData
-      };
-      setProducts(prevProducts => [...prevProducts, newProduct]);
+  const handleSaveProduct = async (productData: Omit<Product, "id">) => {
+    try {
+      // If currentProduct exists, we're updating an existing product
+      const isUpdate = !!currentProduct;
+      const url = isUpdate 
+        ? `/api/products/${encodeURIComponent(currentProduct!.id)}` 
+        : '/api/products';
+      const method = isUpdate ? 'PUT' : 'POST';
+      
+      console.log(`${isUpdate ? 'Updating' : 'Creating'} product with ${method} to ${url}`);
+      console.log('Product ID:', currentProduct?.id);
+      
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(productData),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to save product');
+      }
+
+      if (currentProduct) {
+        // Update existing product in local state
+        setProducts(prevProducts => 
+          prevProducts.map(p => 
+            p.id === currentProduct.id 
+              ? { ...productData, id: currentProduct.id } 
+              : p
+          )
+        );
+      } else {
+        // Add new product to local state
+        const newProduct: Product = {
+          ...productData,
+          id: data.id
+        };
+        setProducts(prevProducts => [...prevProducts, newProduct]);
+      }
+
+      setIsProductModalOpen(false);
+    } catch (error: any) {
+      console.error('Error saving product:', error);
+      alert(error.message || 'Failed to save product. Please try again.');
     }
   };
   

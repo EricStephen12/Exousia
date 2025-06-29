@@ -22,6 +22,7 @@ interface ExtendedProductDetails {
 
 export default function ProductDetailClient({ productId }: { productId: string }) {
   const [product, setProduct] = useState<Product | null>(null);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [selectedSize, setSelectedSize] = useState<string>("");
   const [selectedColor, setSelectedColor] = useState<string>("");
   const [quantity, setQuantity] = useState<number>(1);
@@ -55,7 +56,20 @@ export default function ProductDetailClient({ productId }: { productId: string }
           return;
         }
         
+        console.log('Product data received:', data);
         setProduct(data);
+        
+        // Set the first image as selected image
+        if (data.image) {
+          setSelectedImage(data.image);
+          console.log('Using main image:', data.image);
+        } else if (data.images && data.images.length > 0) {
+          setSelectedImage(data.images[0]);
+          console.log('Using first image from images array:', data.images[0]);
+        } else {
+          setSelectedImage(null);
+          console.log('No images found for product');
+        }
         
         // Set default selected size and color
         if (data.sizes && data.sizes.length > 0) {
@@ -67,10 +81,12 @@ export default function ProductDetailClient({ productId }: { productId: string }
         }
         
         // Fetch related products (same category)
-        const relatedData = await getProductByIdClient(productId);
-        if (relatedData) {
-          setRelatedProducts([relatedData]);
-        }
+        const response = await fetch('/api/products');
+        const allProducts = await response.json();
+        const related = allProducts
+          .filter((p: Product) => p.id !== productId && p.category === data.category)
+          .slice(0, 3); // Get up to 3 related products
+        setRelatedProducts(related);
         
       } catch (err) {
         console.error("Error fetching product:", err);
@@ -126,13 +142,22 @@ export default function ProductDetailClient({ productId }: { productId: string }
           {/* Main Image */}
           <div className="h-full flex items-center justify-center">
             <div className="relative w-full h-full">
-              {product.image ? (
-                <Image 
-                  src={product.image} 
-                  alt={product.name} 
-                  fill 
-                  className="object-cover"
-                />
+              {selectedImage ? (
+                <>
+                  <Image 
+                    src={selectedImage} 
+                    alt={product.name} 
+                    fill 
+                    className="object-cover"
+                    onError={() => {
+                      console.error('Failed to load image:', selectedImage);
+                      setSelectedImage(null);
+                    }}
+                  />
+                  <div className="absolute bottom-4 left-4 bg-black/70 text-xs text-white p-2 rounded z-10">
+                    Image URL: {selectedImage.substring(0, 30)}...
+                  </div>
+                </>
               ) : (
                 <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
                   <p className="text-gold font-italiana text-2xl">Product Image</p>
@@ -147,25 +172,40 @@ export default function ProductDetailClient({ productId }: { productId: string }
           {/* Thumbnail Strip */}
           {product.images && product.images.length > 0 && (
             <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex space-x-4">
-              {product.images.map((image, index) => (
-                <div 
-                  key={index} 
-                  className="w-16 h-16 border border-gold/30 cursor-pointer hover:border-gold transition-colors"
+              {/* Add main product image to thumbnails if it exists */}
+              {product.image && (
+                <button 
+                  onClick={() => setSelectedImage(product.image)}
+                  className={`w-16 h-16 border ${
+                    selectedImage === product.image ? 'border-gold' : 'border-gold/30'
+                  } cursor-pointer hover:border-gold transition-colors`}
                 >
-                  {image ? (
-                    <Image 
-                      src={image} 
-                      alt={`${product.name} view ${index + 1}`} 
-                      width={64}
-                      height={64}
-                      className="object-cover w-full h-full"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-black/50 flex items-center justify-center">
-                      <span className="text-gold text-xs">{index + 1}</span>
-                    </div>
-                  )}
-                </div>
+                  <Image 
+                    src={product.image} 
+                    alt={`${product.name} main view`} 
+                    width={64}
+                    height={64}
+                    className="object-cover w-full h-full"
+                  />
+                </button>
+              )}
+              {/* Additional product images */}
+              {product.images.map((image, index) => (
+                <button 
+                  key={index}
+                  onClick={() => setSelectedImage(image)}
+                  className={`w-16 h-16 border ${
+                    selectedImage === image ? 'border-gold' : 'border-gold/30'
+                  } cursor-pointer hover:border-gold transition-colors`}
+                >
+                  <Image 
+                    src={image} 
+                    alt={`${product.name} view ${index + 1}`} 
+                    width={64}
+                    height={64}
+                    className="object-cover w-full h-full"
+                  />
+                </button>
               ))}
             </div>
           )}

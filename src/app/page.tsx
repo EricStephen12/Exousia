@@ -1,12 +1,35 @@
 import Image from "next/image";
 import Link from "next/link";
 import ClientLayout from "@/components/layout/ClientLayout";
-import { getProductsServer } from "@/lib/supabase/products";
+import { Product } from "@/lib/store/mockData";
+import ProductCard from "@/components/product/ProductCard";
+
+async function getFeaturedProducts() {
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    console.log('Base URL for API calls:', baseUrl);
+    
+    const response = await fetch(`${baseUrl}/api/products/featured`, {
+      cache: 'no-store' // Don't cache the response
+    });
+    
+    if (!response.ok) {
+      console.error('Failed to fetch featured products:', response.status, response.statusText);
+      return [];
+    }
+    
+    const data = await response.json();
+    console.log('Featured products data:', data);
+    return data as Product[];
+  } catch (error) {
+    console.error('Error fetching featured products:', error);
+    return [];
+  }
+}
 
 export default async function Home() {
   // Fetch products for featured section
-  const allProducts = await getProductsServer();
-  const featuredProducts = allProducts.slice(0, 3); // Get first three products
+  const featuredProducts = await getFeaturedProducts();
 
   return (
     <ClientLayout>
@@ -85,41 +108,15 @@ export default async function Home() {
             <h2 className="text-4xl md:text-5xl font-clash-display text-cream mb-12">FEATURED PIECES</h2>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {featuredProducts.map((product) => (
-                <Link 
-                  key={product.id} 
-                  href={`/shop/products/${product.id}`}
-                  className="bg-black border border-gold/20 group cursor-pointer"
-                >
-                  <div className="aspect-[3/4] relative overflow-hidden">
-                    {product.image ? (
-                      <Image
-                        src={product.image}
-                        alt={product.name}
-                        fill
-                        className="object-cover"
-                      />
-                    ) : (
-                      <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                        <p className="text-gold font-italiana">{product.name}</p>
-                      </div>
-                    )}
-                    
-                    {/* Scripture overlay on hover */}
-                    <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-500">
-                      <p className="text-gold font-italiana text-center px-4">
-                        {product.scripture.verse}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="p-4">
-                    <h3 className="font-satoshi font-semibold text-cream">{product.name}</h3>
-                    <p className="text-sm text-cream/70">{product.scripture.reference}</p>
-                    <p className="text-gold font-semibold mt-2">${product.price}</p>
-                  </div>
-                </Link>
-              ))}
+              {featuredProducts && featuredProducts.length > 0 ? (
+                featuredProducts.map((product) => (
+                  product ? <ProductCard key={product.id} product={product} /> : null
+                ))
+              ) : (
+                <div className="col-span-3 text-center py-12">
+                  <p className="text-gold">No featured products available</p>
+                </div>
+              )}
             </div>
             
             <div className="mt-12 text-center">
@@ -143,4 +140,4 @@ export default async function Home() {
       </main>
     </ClientLayout>
   );
-}
+} 

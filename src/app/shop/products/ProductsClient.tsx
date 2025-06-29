@@ -196,11 +196,7 @@ export default function ProductsClient() {
                 {sortedProducts.map((product) => (
                   <ProductCard 
                     key={product.id}
-                    id={product.id}
-                    name={product.name}
-                    price={product.price}
-                    scripture={product.scripture}
-                    image={product.image}
+                    product={product}
                   />
                 ))}
               </div>

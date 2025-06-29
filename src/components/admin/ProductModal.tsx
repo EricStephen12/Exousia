@@ -1,198 +1,247 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { CldUploadWidget } from "next-cloudinary";
-import { Product } from "@/lib/store/mockData";
-import { getCloudinaryConfig, checkCloudinaryConfig } from "@/lib/cloudinary/client";
+import { useState, useEffect } from 'react';
+import { CldUploadWidget } from 'next-cloudinary';
+import { Product } from '@/lib/store/mockData';
 
 interface ProductModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (productData: Omit<Product, "id">) => void;
+  onSave: (product: Omit<Product, "id">) => void;
   product?: Product;
 }
 
-export default function ProductModal({ isOpen, onClose, onSave, product }: ProductModalProps) {
-  const [formData, setFormData] = useState<Omit<Product, "id">>({
-    name: "",
-    price: 0,
-    description: "",
-    category: "",
-    stock: 0,
-    collectionIds: [],
-    scripture: {
-      verse: "",
-      reference: ""
+type CloudinarySource = "local" | "url" | "camera" | "google_drive" | "dropbox" | "facebook" | "instagram" | "shutterstock" | "unsplash";
+
+// Cloudinary widget configuration
+const cloudinaryConfig = {
+  uploadPreset: process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || "exousia-products",
+  maxFiles: 10,
+  sources: ["local", "url", "camera", "google_drive", "dropbox"] as CloudinarySource[],
+  showAdvancedOptions: false,
+  cropping: false,
+  multiple: true,
+  defaultSource: "local" as CloudinarySource,
+  styles: {
+    palette: {
+      window: "#000000",
+      sourceBg: "#000000",
+      windowBorder: "#D4B95E",
+      tabIcon: "#D4B95E",
+      menuIcons: "#D4B95E",
+      textDark: "#000000",
+      textLight: "#F5E6D3",
+      link: "#D4B95E",
+      action: "#D4B95E",
+      inactiveTabIcon: "#696969",
+      error: "#FF0000",
+      inProgress: "#D4B95E",
+      complete: "#20B832",
     },
-    image: "",
-    images: [],
-    sizes: [],
-    colors: []
-  });
-  
-  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
-  const [cloudinaryError, setCloudinaryError] = useState<string | null>(null);
-  
-  // Check Cloudinary configuration on component mount
-  useEffect(() => {
-    if (!checkCloudinaryConfig()) {
-      setCloudinaryError("Cloudinary is not configured. Please set the required environment variables.");
-    } else {
-      setCloudinaryError(null);
+    fonts: {
+      "'Satoshi', sans-serif": {
+        url: "https://fonts.googleapis.com/css?family=Satoshi",
+        active: true
+      }
     }
-  }, []);
+  }
+};
+
+export default function ProductModal({ isOpen, onClose, onSave, product }: ProductModalProps) {
+  // Initialize state from product prop
+  const [name, setName] = useState('');
+  const [price, setPrice] = useState('');
+  const [description, setDescription] = useState('');
+  const [category, setCategory] = useState('');
+  const [stock, setStock] = useState('');
+  const [cut, setCut] = useState('');
+  const [careInstructions, setCareInstructions] = useState('');
+  const [sizes, setSizes] = useState<string[]>([]);
+  const [colors, setColors] = useState<string[]>([]);
+  const [collectionIds, setCollectionIds] = useState<string[]>([]);
+  const [scripture, setScripture] = useState({
+    verse: '',
+    reference: ''
+  });
+  const [images, setImages] = useState<string[]>([]);
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   
-  // Initialize form with product data if editing
+  // Reset form when modal opens/closes or product changes
   useEffect(() => {
-    if (product) {
-      setFormData({
-        name: product.name,
-        price: product.price,
-        description: product.description || "",
-        category: product.category,
-        stock: product.stock,
-        collectionIds: product.collectionIds,
-        scripture: product.scripture,
-        image: product.image,
-        images: product.images || [],
-        sizes: product.sizes || [],
-        colors: product.colors || [],
-        cut: product.cut,
-        careInstructions: product.careInstructions
+    if (isOpen && product) {
+      // Editing existing product
+      console.log('Editing product:', product);
+      console.log('Product images:', product.images);
+      
+      setName(product.name);
+      setPrice(product.price.toString());
+      setDescription(product.description || '');
+      setCategory(product.category);
+      setStock(product.stock.toString());
+      setCut(product.cut || '');
+      setCareInstructions(product.careInstructions || '');
+      setSizes(product.sizes || []);
+      setColors(product.colors || []);
+      setCollectionIds(product.collectionIds || []);
+      setScripture({
+        verse: product.scripture?.verse || '',
+        reference: product.scripture?.reference || ''
       });
       
-      setUploadedImages(product.images || [product.image].filter(Boolean) as string[]);
-    }
-  }, [product]);
-  
-  // Handle input changes
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    
-    if (name.includes(".")) {
-      const [parent, child] = name.split(".");
-      if (parent === "scripture") {
-        setFormData(prev => ({
-          ...prev,
-          scripture: {
-            ...prev.scripture,
-            [child]: value
-          }
-        }));
+      // Initialize both images and uploadedImages with existing product images
+      const productImages = [];
+      
+      // Add main image if it exists
+      if (product.image) {
+        productImages.push(product.image);
       }
-    } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
+      
+      // Add additional images if they exist
+      if (product.images && Array.isArray(product.images)) {
+        // Filter out the main image to avoid duplicates
+        const additionalImages = product.images.filter(img => img !== product.image);
+        productImages.push(...additionalImages);
+      }
+      
+      console.log('Setting images to:', productImages);
+      setImages(productImages);
+      setUploadedImages(productImages);
+    } else if (isOpen) {
+      // New product
+      setName('');
+      setPrice('');
+      setDescription('');
+      setCategory('');
+      setStock('');
+      setCut('');
+      setCareInstructions('');
+      setSizes([]);
+      setColors([]);
+      setCollectionIds([]);
+      setScripture({ verse: '', reference: '' });
+      setImages([]);
+      setUploadedImages([]);
     }
+  }, [isOpen, product]);
+
+  const handleSizeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const sizeArray = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
+    setSizes(sizeArray);
   };
-  
-  // Handle number input changes
-  const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: parseFloat(value) }));
+
+  const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const colorArray = e.target.value.split(',').map(c => c.trim()).filter(Boolean);
+    setColors(colorArray);
   };
-  
-  // Handle array input changes (comma-separated values)
-  const handleArrayChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    const array = value.split(",").map(item => item.trim()).filter(Boolean);
-    setFormData(prev => ({ ...prev, [name]: array }));
+
+  const handleCollectionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const collectionArray = e.target.value.split(',').map(c => c.trim()).filter(Boolean);
+    setCollectionIds(collectionArray);
   };
-  
-  // Handle form submission
+
+  const handleImageUpload = (result: any) => {
+    console.log('Image upload result:', result);
+    
+    if (result.event !== 'success') {
+      return;
+    }
+    
+    // Single upload - Cloudinary widget returns info object with secure_url
+    const newImage = result.info.secure_url;
+    console.log('Adding image:', newImage);
+    
+    setUploadedImages(prev => [...prev, newImage]);
+    setImages(prev => [...prev, newImage]);
+  };
+
+  const handleRemoveImage = (indexToRemove: number) => {
+    setImages(prev => prev.filter((_, index) => index !== indexToRemove));
+    setUploadedImages(prev => prev.filter((_, index) => index !== indexToRemove));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Update image fields with uploaded images
-    const updatedFormData = {
-      ...formData,
-      image: uploadedImages[0] || "",
-      images: uploadedImages
-    };
+    // Make sure we have at least one image
+    const finalImages = uploadedImages.length > 0 ? uploadedImages : [];
     
-    onSave(updatedFormData);
+    console.log('Submitting product with images:', finalImages);
+    
+    onSave({
+      name,
+      price: parseFloat(price),
+      description,
+      category,
+      stock: parseInt(stock),
+      cut,
+      careInstructions,
+      sizes,
+      colors,
+      collectionIds,
+      scripture,
+      images: finalImages,
+      image: finalImages.length > 0 ? finalImages[0] : ''
+    });
     onClose();
-  };
-  
-  // Handle image upload success
-  const handleUploadSuccess = (result: any) => {
-    if (result.info && result.info.secure_url) {
-      setUploadedImages(prev => [...prev, result.info.secure_url]);
-    }
-  };
-  
-  // Remove an uploaded image
-  const handleRemoveImage = (index: number) => {
-    setUploadedImages(prev => prev.filter((_, i) => i !== index));
   };
   
   if (!isOpen) return null;
   
-  // Get Cloudinary configuration
-  const cloudinaryConfig = getCloudinaryConfig();
-  
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex items-center justify-center min-h-screen p-4">
-        <div className="fixed inset-0 bg-black opacity-75" onClick={onClose}></div>
-        
-        <div className="relative bg-black border border-gold/30 p-6 w-full max-w-4xl mx-auto">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-clash-display text-gold">
-              {product ? "EDIT PRODUCT" : "ADD PRODUCT"}
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+      <div className="bg-black/95 border border-gold/50 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl shadow-gold/20">
+        <div className="border-b border-gold/30 p-6">
+          <h2 className="text-3xl font-clash-display font-bold text-gold tracking-wider">
+            {product ? 'EDIT PRODUCT' : 'NEW PRODUCT'}
             </h2>
-            <button 
-              onClick={onClose}
-              className="text-cream hover:text-gold"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
           </div>
           
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Basic Information */}
+            {/* Left Column */}
               <div className="space-y-4">
                 <div>
-                  <label htmlFor="name" className="block text-cream mb-1">Product Name</label>
+                <label className="block text-sm font-medium text-gold mb-2">Name</label>
                   <input
                     type="text"
-                    id="name"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleChange}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full bg-black/30 border border-gold/30 rounded-md p-3 text-cream placeholder-gold/30 focus:border-gold focus:ring-1 focus:ring-gold transition-colors"
                     required
-                    className="w-full bg-black/30 border border-gold/30 text-cream p-2 focus:border-gold focus:outline-none"
                   />
                 </div>
                 
                 <div>
-                  <label htmlFor="price" className="block text-cream mb-1">Price</label>
+                <label className="block text-sm font-medium text-gold mb-2">Price</label>
                   <input
                     type="number"
-                    id="price"
-                    name="price"
-                    value={formData.price}
-                    onChange={handleNumberChange}
-                    min="0"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  className="w-full bg-black/30 border border-gold/30 rounded-md p-3 text-cream placeholder-gold/30 focus:border-gold focus:ring-1 focus:ring-gold transition-colors"
+                  required
                     step="0.01"
-                    required
-                    className="w-full bg-black/30 border border-gold/30 text-cream p-2 focus:border-gold focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gold mb-2">Description</label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="w-full bg-black/30 border border-gold/30 rounded-md p-3 text-cream placeholder-gold/30 focus:border-gold focus:ring-1 focus:ring-gold transition-colors"
+                  rows={4}
                   />
                 </div>
                 
                 <div>
-                  <label htmlFor="category" className="block text-cream mb-1">Category</label>
+                <label className="block text-sm font-medium text-gold mb-2">Category</label>
                   <select
-                    id="category"
-                    name="category"
-                    value={formData.category}
-                    onChange={handleChange}
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="w-full bg-black/30 border border-gold/30 rounded-md p-3 text-cream focus:border-gold focus:ring-1 focus:ring-gold transition-colors"
                     required
-                    className="w-full bg-black/30 border border-gold/30 text-cream p-2 focus:border-gold focus:outline-none"
                   >
-                    <option value="">Select a category</option>
+                  <option value="">Select Category</option>
                     <option value="T-Shirts">T-Shirts</option>
                     <option value="Hoodies">Hoodies</option>
                     <option value="Caps">Caps</option>
@@ -201,178 +250,169 @@ export default function ProductModal({ isOpen, onClose, onSave, product }: Produ
                 </div>
                 
                 <div>
-                  <label htmlFor="stock" className="block text-cream mb-1">Stock</label>
+                <label className="block text-sm font-medium text-gold mb-2">Stock</label>
                   <input
                     type="number"
-                    id="stock"
-                    name="stock"
-                    value={formData.stock}
-                    onChange={handleNumberChange}
-                    min="0"
+                  value={stock}
+                  onChange={(e) => setStock(e.target.value)}
+                  className="w-full bg-black/30 border border-gold/30 rounded-md p-3 text-cream placeholder-gold/30 focus:border-gold focus:ring-1 focus:ring-gold transition-colors"
                     required
-                    className="w-full bg-black/30 border border-gold/30 text-cream p-2 focus:border-gold focus:outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Right Column */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gold mb-2">Cut/Style</label>
+                <input
+                  type="text"
+                  value={cut}
+                  onChange={(e) => setCut(e.target.value)}
+                  className="w-full bg-black/30 border border-gold/30 rounded-md p-3 text-cream placeholder-gold/30 focus:border-gold focus:ring-1 focus:ring-gold transition-colors"
                   />
                 </div>
                 
                 <div>
-                  <label htmlFor="sizes" className="block text-cream mb-1">Sizes (comma-separated)</label>
-                  <input
-                    type="text"
-                    id="sizes"
-                    name="sizes"
-                    value={formData.sizes?.join(", ") || ""}
-                    onChange={handleArrayChange}
-                    className="w-full bg-black/30 border border-gold/30 text-cream p-2 focus:border-gold focus:outline-none"
+                <label className="block text-sm font-medium text-gold mb-2">Care Instructions</label>
+                <textarea
+                  value={careInstructions}
+                  onChange={(e) => setCareInstructions(e.target.value)}
+                  className="w-full bg-black/30 border border-gold/30 rounded-md p-3 text-cream placeholder-gold/30 focus:border-gold focus:ring-1 focus:ring-gold transition-colors"
+                  rows={3}
                   />
                 </div>
                 
                 <div>
-                  <label htmlFor="colors" className="block text-cream mb-1">Colors (comma-separated)</label>
+                <label className="block text-sm font-medium text-gold mb-2">Sizes</label>
                   <input
                     type="text"
-                    id="colors"
-                    name="colors"
-                    value={formData.colors?.join(", ") || ""}
-                    onChange={handleArrayChange}
-                    className="w-full bg-black/30 border border-gold/30 text-cream p-2 focus:border-gold focus:outline-none"
-                  />
-                </div>
+                  value={sizes.join(', ')}
+                  onChange={handleSizeChange}
+                  className="w-full bg-black/30 border border-gold/30 rounded-md p-3 text-cream placeholder-gold/30 focus:border-gold focus:ring-1 focus:ring-gold transition-colors"
+                  placeholder="S, M, L, XL"
+                />
               </div>
               
-              {/* Additional Information */}
-              <div className="space-y-4">
                 <div>
-                  <label htmlFor="description" className="block text-cream mb-1">Description</label>
-                  <textarea
-                    id="description"
-                    name="description"
-                    value={formData.description}
-                    onChange={handleChange}
-                    rows={3}
-                    className="w-full bg-black/30 border border-gold/30 text-cream p-2 focus:border-gold focus:outline-none"
-                  ></textarea>
-                </div>
-                
-                <div>
-                  <label htmlFor="scripture.verse" className="block text-cream mb-1">Scripture Verse</label>
-                  <textarea
-                    id="scripture.verse"
-                    name="scripture.verse"
-                    value={formData.scripture.verse}
-                    onChange={handleChange}
-                    rows={2}
-                    required
-                    className="w-full bg-black/30 border border-gold/30 text-cream p-2 focus:border-gold focus:outline-none"
-                  ></textarea>
-                </div>
-                
-                <div>
-                  <label htmlFor="scripture.reference" className="block text-cream mb-1">Scripture Reference</label>
+                <label className="block text-sm font-medium text-gold mb-2">Colors</label>
                   <input
                     type="text"
-                    id="scripture.reference"
-                    name="scripture.reference"
-                    value={formData.scripture.reference}
-                    onChange={handleChange}
-                    required
-                    className="w-full bg-black/30 border border-gold/30 text-cream p-2 focus:border-gold focus:outline-none"
+                  value={colors.join(', ')}
+                  onChange={handleColorChange}
+                  className="w-full bg-black/30 border border-gold/30 rounded-md p-3 text-cream placeholder-gold/30 focus:border-gold focus:ring-1 focus:ring-gold transition-colors"
+                  placeholder="Black, White, Gold"
                   />
                 </div>
                 
                 <div>
-                  <label htmlFor="cut" className="block text-cream mb-1">Cut/Fit</label>
+                <label className="block text-sm font-medium text-gold mb-2">Collections</label>
                   <input
                     type="text"
-                    id="cut"
-                    name="cut"
-                    value={formData.cut || ""}
-                    onChange={handleChange}
-                    className="w-full bg-black/30 border border-gold/30 text-cream p-2 focus:border-gold focus:outline-none"
-                  />
+                  value={collectionIds.join(', ')}
+                  onChange={handleCollectionChange}
+                  className="w-full bg-black/30 border border-gold/30 rounded-md p-3 text-cream placeholder-gold/30 focus:border-gold focus:ring-1 focus:ring-gold transition-colors"
+                  placeholder="faith-essentials, anointed"
+                />
+              </div>
+            </div>
                 </div>
                 
+          {/* Scripture Section */}
+          <div className="border-t border-gold/30 pt-6">
+            <h3 className="text-xl font-clash-display text-gold mb-4">Scripture</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label htmlFor="careInstructions" className="block text-cream mb-1">Care Instructions</label>
+                <label className="block text-sm font-medium text-gold mb-2">Verse</label>
                   <textarea
-                    id="careInstructions"
-                    name="careInstructions"
-                    value={formData.careInstructions || ""}
-                    onChange={handleChange}
-                    rows={2}
-                    className="w-full bg-black/30 border border-gold/30 text-cream p-2 focus:border-gold focus:outline-none"
-                  ></textarea>
+                  value={scripture.verse}
+                  onChange={(e) => setScripture(prev => ({ ...prev, verse: e.target.value }))}
+                  className="w-full bg-black/30 border border-gold/30 rounded-md p-3 text-cream placeholder-gold/30 focus:border-gold focus:ring-1 focus:ring-gold transition-colors"
+                  rows={3}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gold mb-2">Reference</label>
+                <input
+                  type="text"
+                  value={scripture.reference}
+                  onChange={(e) => setScripture(prev => ({ ...prev, reference: e.target.value }))}
+                  className="w-full bg-black/30 border border-gold/30 rounded-md p-3 text-cream placeholder-gold/30 focus:border-gold focus:ring-1 focus:ring-gold transition-colors"
+                />
                 </div>
               </div>
             </div>
             
-            {/* Product Images */}
+          {/* Images Section */}
+          <div className="border-t border-gold/30 pt-6">
+            <h3 className="text-xl font-clash-display text-gold mb-4">Product Images</h3>
             <div className="space-y-4">
-              <label className="block text-cream mb-1">Product Images</label>
-              
-              {cloudinaryError ? (
-                <div className="p-4 border border-red-500 bg-red-500/10 text-red-400 mb-4">
-                  {cloudinaryError}
-                  <p className="mt-2 text-sm">
-                    To fix this, add NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME to your .env.local file.
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <div className="flex flex-wrap gap-3 mb-3">
-                    {uploadedImages.map((url, index) => (
-                      <div key={index} className="relative w-24 h-24 border border-gold/30">
-                        <img src={url} alt={`Product ${index}`} className="w-full h-full object-cover" />
+              <label className="block">
+                <span className="text-cream">Product Images</span>
+                <div className="mt-2 grid grid-cols-4 gap-4">
+                  {images.map((img, index) => (
+                    <div key={index} className="relative group">
+                      <img
+                        src={img}
+                        alt={`Product ${index + 1}`}
+                        className="w-full h-24 object-cover border border-gold/30"
+                      />
                         <button
                           type="button"
                           onClick={() => handleRemoveImage(index)}
-                          className="absolute -top-2 -right-2 bg-black text-gold rounded-full w-6 h-6 flex items-center justify-center"
+                        className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                         >
-                          ×
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M18 6 6 18M6 6l12 12"/>
+                        </svg>
                         </button>
                       </div>
                     ))}
-                  </div>
-                  
                   <CldUploadWidget
-                    {...cloudinaryConfig}
-                    onSuccess={handleUploadSuccess}
+                    uploadPreset="exousia-products"
+                    onUpload={(result: any) => handleImageUpload(result)}
+                    options={{
+                      maxFiles: 10,
+                      multiple: true,
+                      sources: ["local", "url", "camera", "google_drive", "dropbox"],
+                      clientAllowedFormats: ["image"],
+                      maxFileSize: 5000000
+                    }}
                   >
                     {({ open }) => (
                       <button
                         type="button"
                         onClick={() => open()}
-                        className="bg-black/30 border border-gold/30 text-gold p-2 hover:bg-gold/10"
+                        className="w-full h-24 border border-dashed border-gold/30 flex items-center justify-center text-gold/50 hover:text-gold hover:border-gold transition-colors"
                       >
-                        Upload Images
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M12 5v14M5 12h14"/>
+                        </svg>
                       </button>
                     )}
                   </CldUploadWidget>
-                  
-                  <p className="text-cream/50 text-sm">
-                    First image will be used as the main product image
-                  </p>
-                </>
-              )}
+                </div>
+              </label>
+            </div>
             </div>
             
             {/* Form Actions */}
-            <div className="flex justify-end space-x-4 pt-4 border-t border-gold/20">
+          <div className="border-t border-gold/30 pt-6 flex justify-end space-x-4">
               <button 
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 border border-gold/30 text-cream hover:bg-gold/10"
+              className="px-6 py-3 border border-gold/50 text-gold hover:bg-gold/10 rounded-md transition-colors duration-200"
               >
                 Cancel
               </button>
               <button 
                 type="submit"
-                className="px-4 py-2 bg-gold text-black hover:bg-gold/90"
+              className="px-6 py-3 bg-gold text-black hover:bg-gold/90 rounded-md transition-colors duration-200"
               >
-                {product ? "Update Product" : "Add Product"}
+              {product ? 'Update Product' : 'Create Product'}
               </button>
             </div>
           </form>
-        </div>
       </div>
     </div>
   );

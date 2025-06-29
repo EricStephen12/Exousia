@@ -27,13 +27,6 @@ export async function dbProductToFrontendProduct(
   supabase: ReturnType<typeof createClient>,
   dbProduct: any
 ): Promise<Product> {
-  // Get product images
-  const { data: images } = await supabase
-    .from('product_images')
-    .select('image_url')
-    .eq('product_id', dbProduct.id)
-    .order('display_order');
-
   // Get product sizes
   const { data: sizes } = await supabase
     .from('product_sizes')
@@ -68,8 +61,8 @@ export async function dbProductToFrontendProduct(
     stock: dbProduct.stock,
     collectionIds: (collections as ProductCollection[] || []).map(c => c.collection_id),
     scripture: (scripture as Scripture) || { verse: '', reference: '' },
-    image: (images as ProductImage[] || []).length > 0 ? (images as ProductImage[])[0].image_url : '',
-    images: (images as ProductImage[] || []).map(img => img.image_url),
+    image: dbProduct.image || '',
+    images: dbProduct.images || [],
     cut: dbProduct.cut || undefined,
     careInstructions: dbProduct.care_instructions || undefined,
     sizes: (sizes as ProductSize[] || []).map(s => s.size),
@@ -79,6 +72,12 @@ export async function dbProductToFrontendProduct(
 
 // Transform a frontend product to database format
 export function frontendProductToDbFormat(product: Product) {
+  console.log('Product being transformed for DB:', product);
+  console.log('Images array:', product.images);
+  
+  // Ensure images is always an array
+  const images = Array.isArray(product.images) ? product.images : [];
+  
   // Main product data
   const productData = {
     name: product.name,
@@ -87,7 +86,9 @@ export function frontendProductToDbFormat(product: Product) {
     category: product.category,
     stock: product.stock,
     cut: product.cut || null,
-    care_instructions: product.careInstructions || null
+    care_instructions: product.careInstructions || null,
+    image: product.image || null,
+    images: images
   };
 
   // Product sizes
@@ -106,12 +107,6 @@ export function frontendProductToDbFormat(product: Product) {
     reference: product.scripture.reference
   };
 
-  // Images
-  const images = (product.images || [product.image]).filter(Boolean).map((url, index) => ({
-    image_url: url,
-    display_order: index
-  }));
-
   // Collections
   const collections = product.collectionIds.map(id => ({
     collection_id: id
@@ -122,7 +117,6 @@ export function frontendProductToDbFormat(product: Product) {
     sizes,
     colors,
     scripture,
-    images,
     collections
   };
 }
@@ -155,8 +149,53 @@ export async function insertProductWithRelations(
   supabase: ReturnType<typeof createClient>,
   product: Product
 ) {
-  const { product: productData, sizes, colors, scripture, images, collections } = 
+  const { product: productData, sizes, colors, scripture, collections } = 
     frontendProductToDbFormat(product);
+  
+  // First, get the collection UUIDs from their slugs/names
+  let collectionUuids: { collection_id: string }[] = [];
+  if (product.collectionIds.length > 0) {
+    // Check if the collection IDs are already UUIDs or if they're slugs/names
+    const isUuid = (id: string) => 
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    
+    const uuidCollectionIds = product.collectionIds.filter(isUuid);
+    const slugCollectionIds = product.collectionIds.filter(id => !isUuid(id));
+    
+    // For UUIDs, use them directly
+    if (uuidCollectionIds.length > 0) {
+      collectionUuids = [
+        ...collectionUuids,
+        ...uuidCollectionIds.map(id => ({ collection_id: id }))
+      ];
+    }
+    
+    // For slugs/names, look them up in the database
+    if (slugCollectionIds.length > 0) {
+      const { data: collectionsData, error: collectionsError } = await supabase
+        .from('collections')
+        .select('id, name')
+        .in('name', slugCollectionIds.map(id => {
+          // Convert slug to title case for matching collection names
+          return id.split('-').map(word => 
+            word.charAt(0).toUpperCase() + word.slice(1)
+          ).join(' ');
+        }));
+
+      if (collectionsError) {
+        throw new Error(`Error fetching collections: ${collectionsError.message}`);
+      }
+
+      if (collectionsData) {
+        collectionUuids = [
+          ...collectionUuids,
+          ...collectionsData.map(c => ({ collection_id: c.id as string }))
+        ];
+      }
+    }
+  }
+  
+  console.log('Collection UUIDs to use:', collectionUuids);
   
   // Insert product
   const { data: insertedProduct, error: productError } = await supabase
@@ -215,25 +254,9 @@ export async function insertProductWithRelations(
     throw new Error(`Error inserting scripture: ${scriptureError.message}`);
   }
   
-  // Insert images
-  if (images.length > 0) {
-    const imagesWithProductId = images.map(image => ({
-      ...image,
-      product_id: productId
-    }));
-    
-    const { error: imagesError } = await supabase
-      .from('product_images')
-      .insert(imagesWithProductId);
-    
-    if (imagesError) {
-      throw new Error(`Error inserting images: ${imagesError.message}`);
-    }
-  }
-  
-  // Insert collection relationships
-  if (collections.length > 0) {
-    const collectionsWithProductId = collections.map(collection => ({
+  // Insert collections
+  if (collectionUuids.length > 0) {
+    const collectionsWithProductId = collectionUuids.map(collection => ({
       ...collection,
       product_id: productId
     }));
@@ -243,7 +266,7 @@ export async function insertProductWithRelations(
       .insert(collectionsWithProductId);
     
     if (collectionsError) {
-      throw new Error(`Error inserting collection relationships: ${collectionsError.message}`);
+      throw new Error(`Error inserting collections: ${collectionsError.message}`);
     }
   }
   
