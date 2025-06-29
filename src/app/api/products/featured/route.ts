@@ -16,13 +16,20 @@ export async function GET() {
     
     console.log('Valid products:', validProducts);
     
-    // Get featured products - prioritize products with images
+    // Get random products - prioritize products with images
     const productsWithImages = validProducts.filter(p => p.image || (p.images && p.images.length > 0));
     console.log('Products with images:', productsWithImages);
     
+    // Function to get random products
+    const getRandomProducts = (products: any[], count: number) => {
+      const shuffled = [...products].sort(() => 0.5 - Math.random());
+      return shuffled.slice(0, count);
+    };
+    
+    // Get 3 random products, preferring those with images
     const featuredProducts = productsWithImages.length >= 3 
-      ? productsWithImages.slice(0, 3) 
-      : validProducts.slice(0, 3);
+      ? getRandomProducts(productsWithImages, 3)
+      : getRandomProducts(validProducts, 3);
     
     console.log('Featured products being returned:', featuredProducts);
     
